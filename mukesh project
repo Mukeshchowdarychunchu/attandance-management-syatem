@@ -1,0 +1,162 @@
+import javax.swing.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Arrays;
+
+// Interface for attendance operations
+interface AttendanceSystem {
+    void addStudents(java.util.List<String> names);
+    void markAttendance(java.util.List<String> names, boolean isPresent);
+    void displayAttendance();
+}
+
+// Implementation of the interface
+class AttendanceManager implements AttendanceSystem {
+    private java.util.List<String> students;
+    private Map<String, String> attendanceRecord;
+    private DefaultListModel<String> listModel;
+    private JLabel statusLabel;
+
+    public AttendanceManager(DefaultListModel<String> listModel, JLabel statusLabel) {
+        this.students = new ArrayList<>();
+        this.attendanceRecord = new HashMap<>();
+        this.listModel = listModel;
+        this.statusLabel = statusLabel;
+    }
+
+    @Override
+    public void addStudents(java.util.List<String> names) {
+        int added = 0;
+        for (String raw : names) {
+            String name = raw.trim();
+            if (!name.isEmpty() && !students.contains(name)) {
+                students.add(name);
+                attendanceRecord.put(name, "Absent");
+                added++;
+            }
+        }
+        displayAttendance();
+        statusLabel.setText("✅ Added " + added + " student(s).");
+    }
+
+    @Override
+    public void markAttendance(java.util.List<String> names, boolean isPresent) {
+        if (names == null || names.isEmpty()) {
+            statusLabel.setText("❌ No student selected.");
+            return;
+        }
+        String status = isPresent ? "Present" : "Absent";
+        for (String name : names) {
+            if (attendanceRecord.containsKey(name)) {
+                attendanceRecord.put(name, status);
+            }
+        }
+        displayAttendance();
+        statusLabel.setText("✅ Marked " + names.size() + " student(s) as " + status + ".");
+    }
+
+    @Override
+    public void displayAttendance() {
+        listModel.clear();
+        for (String student : students) {
+            listModel.addElement(student + " - " + attendanceRecord.get(student));
+        }
+    }
+}
+
+// GUI class
+public class AttendanceManagementSystemGUI extends JFrame {
+    private JTextArea studentArea;
+    private DefaultListModel<String> listModel;
+    private JList<String> studentList;
+    private AttendanceManager manager;
+    private JLabel statusLabel;
+
+    public AttendanceManagementSystemGUI() {
+        setTitle("Attendance Management System");
+        setSize(620, 480);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        // --- Components ---
+        // Multi-add area
+        studentArea = new JTextArea(3, 24);
+        JButton addListButton = new JButton("Add Student List");
+
+        // Attendance buttons
+        JButton markPresentButton = new JButton("Mark Present");
+        JButton markAbsentButton = new JButton("Mark Absent");
+        JButton refreshButton = new JButton("Refresh");
+
+        // List display
+        listModel = new DefaultListModel<>();
+        studentList = new JList<>(listModel);
+        studentList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        JScrollPane listScroll = new JScrollPane(studentList);
+
+        // Status label
+        statusLabel = new JLabel("Welcome to Attendance Management System");
+        statusLabel.setForeground(Color.BLUE);
+
+        // Manager
+        manager = new AttendanceManager(listModel, statusLabel);
+
+        // --- Layout ---
+        JPanel inputPanel = new JPanel(new BorderLayout(6, 6));
+        inputPanel.add(new JLabel("Enter student names (comma or newline separated):"), BorderLayout.NORTH);
+        inputPanel.add(new JScrollPane(studentArea), BorderLayout.CENTER);
+        inputPanel.add(addListButton, BorderLayout.EAST);
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(markPresentButton);
+        buttonPanel.add(markAbsentButton);
+        buttonPanel.add(refreshButton);
+
+        setLayout(new BorderLayout(8, 8));
+        add(inputPanel, BorderLayout.NORTH);
+        add(listScroll, BorderLayout.CENTER);
+        add(buttonPanel, BorderLayout.SOUTH);
+        add(statusLabel, BorderLayout.PAGE_END);
+
+        // --- Actions ---
+        addListButton.addActionListener(e -> {
+            String text = studentArea.getText();
+            if (text.trim().isEmpty()) {
+                statusLabel.setText("❌ Please enter at least one student name.");
+                return;
+            }
+            String[] parts = text.split("[,\n]");
+            manager.addStudents(Arrays.asList(parts));
+            studentArea.setText("");
+        });
+
+        markPresentButton.addActionListener(e -> {
+            java.util.List<String> names = getSelectedStudentNames();
+            manager.markAttendance(names, true);
+        });
+
+        markAbsentButton.addActionListener(e -> {
+            java.util.List<String> names = getSelectedStudentNames();
+            manager.markAttendance(names, false);
+        });
+
+        refreshButton.addActionListener(e -> manager.displayAttendance());
+    }
+
+    private java.util.List<String> getSelectedStudentNames() {
+        java.util.List<String> names = new ArrayList<>();
+        for (String selected : studentList.getSelectedValuesList()) {
+            // item format: "Name - Status"
+            String[] parts = selected.split(" - ", 2);
+            if (parts.length > 0) names.add(parts[0]);
+        }
+        return names;
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new AttendanceManagementSystemGUI().setVisible(true));
+    }
+}
